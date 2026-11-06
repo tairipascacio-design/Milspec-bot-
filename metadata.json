@@ -1,0 +1,6 @@
+{
+  "name": "ARES TRADING AI - Web3 Futures Combat Terminal",
+  "description": "Terminal bélico de trading táctico en Web3 futuros con IA militar autónoma, base de datos global de trading institucional, análisis de confluencias en vivo, radar táctico y simulador de operaciones bélicas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
