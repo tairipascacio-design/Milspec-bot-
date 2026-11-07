@@ -9,6 +9,14 @@ export interface Web3WalletState {
   usdtBalance: string;
   isMetaMask: boolean;
   isAuthorized: boolean;
+  isImported?: boolean;
+  hyperliquidState?: {
+    accountValue: number;
+    totalRawUsd: number;
+    withdrawable: number;
+    totalMarginUsed: number;
+    positions: any[];
+  } | null;
   agentWallet: {
     address: string;
     isAuthorized: boolean;

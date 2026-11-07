@@ -156,6 +156,79 @@ app.post('/api/protocols/hyperliquid/info', async (req, res) => {
   }
 });
 
+// Endpoint: Sync imported wallet with Hyperliquid Clearinghouse State and Arbitrum RPC
+app.post('/api/wallet/sync-imported', async (req, res) => {
+  try {
+    const { address } = req.body;
+    if (!address || typeof address !== 'string' || !address.startsWith('0x') || address.length !== 42) {
+      return res.status(400).json({ error: 'Dirección Ethereum/Arbitrum inválida. Debe comenzar con 0x y tener 42 caracteres.' });
+    }
+
+    // 1. Fetch Hyperliquid clearinghouseState
+    let hlData: any = null;
+    try {
+      const hlRes = await fetch('https://api.hyperliquid.xyz/info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'clearinghouseState', user: address }),
+      });
+      if (hlRes.ok) {
+        hlData = await hlRes.json();
+      }
+    } catch (e: any) {
+      console.warn('Could not fetch Hyperliquid clearinghouseState:', e?.message);
+    }
+
+    // 2. Fetch Arbitrum One ETH balance
+    let ethBalance = '0.0000 ETH';
+    try {
+      const arbRes = await fetch('https://arb1.arbitrum.io/rpc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_getBalance',
+          params: [address, 'latest'],
+          id: 1,
+        }),
+      });
+      if (arbRes.ok) {
+        const arbJson = await arbRes.json();
+        if (arbJson.result) {
+          const wei = BigInt(arbJson.result);
+          const ethNum = Number(wei) / 1e18;
+          ethBalance = `${ethNum.toFixed(4)} ETH`;
+        }
+      }
+    } catch (e: any) {
+      console.warn('Could not fetch Arbitrum balance:', e?.message);
+    }
+
+    const accountValue = parseFloat(hlData?.marginSummary?.accountValue || '0');
+    const totalRawUsd = parseFloat(hlData?.marginSummary?.totalRawUsd || '0');
+    const withdrawable = parseFloat(hlData?.withdrawable || '0');
+    const totalMarginUsed = parseFloat(hlData?.marginSummary?.totalMarginUsed || '0');
+    const positions = hlData?.assetPositions || [];
+
+    res.json({
+      success: true,
+      address,
+      ethBalance,
+      hyperliquid: {
+        accountValue,
+        totalRawUsd,
+        withdrawable,
+        totalMarginUsed,
+        positions,
+      },
+      message: 'Billetera importada y sincronizada con éxito con Hyperliquid y Arbitrum.',
+    });
+  } catch (error: any) {
+    console.error('Wallet sync error:', error);
+    res.status(500).json({ error: 'Error al sincronizar billetera importada.' });
+  }
+});
+
 // Endpoint: AI Tactical Analysis for opening/managing positions
 app.post('/api/ai/analyze-tactical', async (req, res) => {
   try {

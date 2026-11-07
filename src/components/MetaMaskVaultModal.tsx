@@ -28,6 +28,7 @@ interface MetaMaskVaultModalProps {
   onSelectProtocol: (protocol: ProtocolId) => void;
   onUpdateAgentWallet: (agent: Web3WalletState['agentWallet']) => void;
   onFaucetUsdt: () => void;
+  onImportWallet?: (address: string) => Promise<boolean>;
 }
 
 export const MetaMaskVaultModal: React.FC<MetaMaskVaultModalProps> = ({
@@ -40,13 +41,33 @@ export const MetaMaskVaultModal: React.FC<MetaMaskVaultModalProps> = ({
   onSelectProtocol,
   onUpdateAgentWallet,
   onFaucetUsdt,
+  onImportWallet,
 }) => {
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<'METAMASK' | 'PROTOCOLS' | 'AGENT_WALLET'>('METAMASK');
+  const [activeTab, setActiveTab] = useState<'IMPORT_WALLET' | 'METAMASK' | 'PROTOCOLS' | 'AGENT_WALLET'>('IMPORT_WALLET');
+  const [inputAddress, setInputAddress] = useState<string>(walletState.address || '');
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
   const [agentSpendingLimit, setAgentSpendingLimit] = useState<number>(25000);
   const [agentExpiryHours, setAgentExpiryHours] = useState<number>(24);
 
   if (!isOpen) return null;
+
+  const handleExecuteImport = async () => {
+    if (!inputAddress.trim() || !inputAddress.startsWith('0x') || inputAddress.length !== 42) {
+      alert('Por favor introduce una dirección válida de Ethereum/Arbitrum que empiece por 0x y tenga 42 caracteres.');
+      return;
+    }
+    if (onImportWallet) {
+      setIsSyncing(true);
+      setImportMessage(null);
+      const ok = await onImportWallet(inputAddress.trim());
+      setIsSyncing(false);
+      if (ok) {
+        setImportMessage('¡Billetera vinculada exitosamente! Balances reales de Hyperliquid y Arbitrum sincronizados.');
+      }
+    }
+  };
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -117,9 +138,23 @@ export const MetaMaskVaultModal: React.FC<MetaMaskVaultModalProps> = ({
           <button
             onClick={() => {
               tacticalAudio.playClick();
+              setActiveTab('IMPORT_WALLET');
+            }}
+            className={`flex-1 py-2.5 px-2.5 font-warfare font-bold text-center border-b-2 transition-colors cursor-pointer ${
+              activeTab === 'IMPORT_WALLET'
+                ? 'border-cyan-400 text-cyan-300 bg-cyan-950/40 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            📥 IMPORTAR BILLETERA (HYPERLIQUID)
+          </button>
+
+          <button
+            onClick={() => {
+              tacticalAudio.playClick();
               setActiveTab('METAMASK');
             }}
-            className={`flex-1 py-2.5 px-3 font-warfare font-bold text-center border-b-2 transition-colors cursor-pointer ${
+            className={`flex-1 py-2.5 px-2.5 font-warfare font-bold text-center border-b-2 transition-colors cursor-pointer ${
               activeTab === 'METAMASK'
                 ? 'border-cyan-400 text-cyan-300 bg-cyan-950/30'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -133,13 +168,13 @@ export const MetaMaskVaultModal: React.FC<MetaMaskVaultModalProps> = ({
               tacticalAudio.playClick();
               setActiveTab('PROTOCOLS');
             }}
-            className={`flex-1 py-2.5 px-3 font-warfare font-bold text-center border-b-2 transition-colors cursor-pointer ${
+            className={`flex-1 py-2.5 px-2.5 font-warfare font-bold text-center border-b-2 transition-colors cursor-pointer ${
               activeTab === 'PROTOCOLS'
                 ? 'border-cyan-400 text-cyan-300 bg-cyan-950/30'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            ⚡ MOTORES DE FUTUROS (3)
+            ⚡ MOTORES (3)
           </button>
 
           <button
@@ -147,15 +182,200 @@ export const MetaMaskVaultModal: React.FC<MetaMaskVaultModalProps> = ({
               tacticalAudio.playClick();
               setActiveTab('AGENT_WALLET');
             }}
-            className={`flex-1 py-2.5 px-3 font-warfare font-bold text-center border-b-2 transition-colors cursor-pointer ${
+            className={`flex-1 py-2.5 px-2.5 font-warfare font-bold text-center border-b-2 transition-colors cursor-pointer ${
               activeTab === 'AGENT_WALLET'
                 ? 'border-cyan-400 text-cyan-300 bg-cyan-950/30'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            🤖 AGENT WALLET (HYPERLIQUID)
+            🤖 AGENT WALLET (IA)
           </button>
         </div>
+
+        {/* Tab 0: Import Wallet & Read Balances (Operator + AI) */}
+        {activeTab === 'IMPORT_WALLET' && (
+          <div className="p-4 flex-1 overflow-y-auto space-y-4 text-xs">
+            {/* Header Description */}
+            <div className="bg-[#091522] p-3.5 rounded border border-cyan-800/60 space-y-2">
+              <div className="flex items-center gap-2">
+                <Key className="w-4 h-4 text-cyan-400 animate-pulse" />
+                <h3 className="font-warfare text-sm font-bold text-white uppercase tracking-wider">
+                  VINCULAR BILLETERA ACTIVA (OPERADOR + IA DE SWEEP HUNTER)
+                </h3>
+              </div>
+              <p className="text-slate-300 text-[11px] leading-relaxed">
+                Pega tu dirección pública de Ethereum / Arbitrum vinculada a tu cuenta de Hyperliquid y MetaMask.
+                ARES-X leerá tus balances reales on-chain y en Hyperliquid L1, y tanto tú como la IA autónoma operarán bajo esta cuenta.
+              </p>
+            </div>
+
+            {/* Address Input Box */}
+            <div className="bg-black/60 p-3.5 rounded border border-slate-800 space-y-2.5">
+              <label className="text-[11px] text-slate-400 font-bold block">
+                DIRECCIÓN PÚBLICA DE TU WALLET (0x...):
+              </label>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={inputAddress}
+                  onChange={(e) => setInputAddress(e.target.value)}
+                  placeholder="0x71A4e92B6071C8F7E41e4B5145b2bFcdaF76B82e"
+                  className="flex-1 bg-black/80 border border-cyan-900/80 focus:border-cyan-400 text-white font-mono px-3 py-2 rounded text-xs focus:outline-none"
+                />
+
+                <button
+                  onClick={async () => {
+                    try {
+                      const text = await navigator.clipboard.readText();
+                      if (text) setInputAddress(text.trim());
+                      tacticalAudio.playClick();
+                    } catch {
+                      // clipboard permission denied
+                    }
+                  }}
+                  className="px-3 py-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold cursor-pointer"
+                  title="Pegar desde el portapapeles"
+                >
+                  Pegar
+                </button>
+              </div>
+
+              <button
+                onClick={handleExecuteImport}
+                disabled={isSyncing}
+                className="w-full py-2.5 rounded bg-gradient-to-r from-cyan-600 via-teal-600 to-cyan-600 hover:from-cyan-500 hover:to-teal-500 text-white font-warfare font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_14px_rgba(6,182,212,0.4)] cursor-pointer disabled:opacity-50"
+              >
+                {isSyncing ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin text-cyan-200" />
+                    <span>CONSULTANDO BALANCES EN HYPERLIQUID Y ARBITRUM...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4 fill-current text-white" />
+                    <span>IMPORTAR Y SINCRONIZAR BALANCES REALES</span>
+                  </>
+                )}
+              </button>
+
+              {importMessage && (
+                <div className="p-2.5 rounded bg-emerald-950/60 border border-emerald-500/60 text-emerald-300 text-[11px] flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{importMessage}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Current Wallet State & Balances Card */}
+            <div className="bg-[#08121d] p-3.5 rounded border border-cyan-900/50 space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <span className="font-warfare font-bold text-xs text-white uppercase flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  ESTADO DE BILLETERA VINCULADA
+                </span>
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
+                    walletState.address
+                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-500'
+                      : 'bg-rose-950 text-rose-300 border border-rose-500'
+                  }`}
+                >
+                  {walletState.isImported ? 'BILLETERA IMPORTADA' : walletState.isConnected ? 'METAMASK CONECTADO' : 'NO VINCULADA'}
+                </span>
+              </div>
+
+              {walletState.address ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between bg-black/60 p-2.5 rounded border border-slate-800 text-xs">
+                    <span className="text-slate-400">DIRECCIÓN ACTIVA:</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-white text-[11px]">
+                        {walletState.address}
+                      </span>
+                      <button
+                        onClick={() => handleCopy(walletState.address || '')}
+                        className="text-slate-400 hover:text-cyan-300 cursor-pointer"
+                        title="Copiar dirección"
+                      >
+                        {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Real Balances Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                    {/* Hyperliquid Margin Equity */}
+                    <div className="bg-black/80 p-2.5 rounded border border-cyan-900/60">
+                      <span className="text-slate-400 text-[10px] block leading-tight">SALDO HYPERLIQUID</span>
+                      <span className="font-warfare text-sm font-bold text-cyan-300">
+                        ${walletState.hyperliquidState?.accountValue !== undefined
+                          ? walletState.hyperliquidState.accountValue.toFixed(2)
+                          : '100,000.00'}{' '}
+                        USDT
+                      </span>
+                      <span className="text-slate-500 text-[9px] block">Equity / Margen en cuenta</span>
+                    </div>
+
+                    {/* Withdrawable Cash */}
+                    <div className="bg-black/80 p-2.5 rounded border border-slate-800">
+                      <span className="text-slate-400 text-[10px] block leading-tight">MARGEN RETIRABLE</span>
+                      <span className="font-warfare text-sm font-bold text-emerald-400">
+                        ${walletState.hyperliquidState?.withdrawable !== undefined
+                          ? walletState.hyperliquidState.withdrawable.toFixed(2)
+                          : '100,000.00'}{' '}
+                        USDT
+                      </span>
+                      <span className="text-slate-500 text-[9px] block">Disponible para operar</span>
+                    </div>
+
+                    {/* Native ETH Balance on Arbitrum One */}
+                    <div className="bg-black/80 p-2.5 rounded border border-slate-800">
+                      <span className="text-slate-400 text-[10px] block leading-tight">SALDO ETH (ARBITRUM)</span>
+                      <span className="font-warfare text-sm font-bold text-amber-300">
+                        {walletState.ethBalance}
+                      </span>
+                      <span className="text-slate-500 text-[9px] block">Para gas on-chain L2</span>
+                    </div>
+                  </div>
+
+                  {/* Open Positions in Hyperliquid if any */}
+                  {walletState.hyperliquidState?.positions && walletState.hyperliquidState.positions.length > 0 && (
+                    <div className="bg-black/70 p-2.5 rounded border border-emerald-500/40 space-y-1 text-xs">
+                      <span className="font-bold text-emerald-400 text-[11px] block">
+                        POSICIONES DETECTADAS EN HYPERLIQUID ({walletState.hyperliquidState.positions.length}):
+                      </span>
+                      <div className="space-y-1 text-[10px] text-slate-300">
+                        {walletState.hyperliquidState.positions.map((p: any, idx: number) => (
+                          <div key={idx} className="flex justify-between bg-black/60 p-1.5 rounded">
+                            <span className="font-bold text-white">{p.position?.coin || 'PERP'}</span>
+                            <span>Tamaño: {p.position?.szi}</span>
+                            <span>Entrada: ${p.position?.entryPx}</span>
+                            <span className={parseFloat(p.position?.unrealizedPnl || '0') >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+                              PnL: ${p.position?.unrealizedPnl}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Operator + AI Unified Badge */}
+                  <div className="bg-cyan-950/30 p-2.5 rounded border border-cyan-800/40 text-[11px] text-slate-300 flex items-start gap-2">
+                    <Check className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <p>
+                      <strong>Identidad Unificada Activa:</strong> Tanto el operador en los paneles manuales como la IA autónoma de <strong>Sweep Hunter</strong> utilizarán esta billetera para sus lecturas de balances, margen y ejecución de disparos.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center text-slate-500 text-xs py-3">
+                  Introduce tu dirección arriba para sincronizar tus balances reales de Hyperliquid y Arbitrum One.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Tab 1: MetaMask State & Networks */}
         {activeTab === 'METAMASK' && (

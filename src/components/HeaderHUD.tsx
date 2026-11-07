@@ -214,6 +214,11 @@ export const HeaderHUD: React.FC<HeaderHUDProps> = ({
                     <span className="text-xs font-bold text-white">
                       {walletState.address?.slice(0, 6)}...{walletState.address?.slice(-4)}
                     </span>
+                    {walletState.isImported && (
+                      <span className="text-[8px] bg-cyan-950 text-cyan-300 border border-cyan-500 px-1 rounded font-bold">
+                        IMPORTADA
+                      </span>
+                    )}
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                   </div>
                   <span className="text-[9px] text-cyan-400 block leading-none">

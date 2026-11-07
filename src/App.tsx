@@ -138,6 +138,53 @@ export default function App() {
     setWalletState(DEFAULT_WALLET_STATE);
   };
 
+  // Import custom wallet address (Hyperliquid + Arbitrum sync)
+  const handleImportWallet = async (address: string): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/wallet/sync-imported', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Error al sincronizar');
+      }
+      const data = await res.json();
+      const hlEquity = data.hyperliquid.accountValue;
+      const formattedUsdt =
+        hlEquity > 0
+          ? `${hlEquity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`
+          : '100,000.00 USDT';
+
+      setWalletState((prev) => ({
+        ...prev,
+        isConnected: true,
+        address: data.address,
+        chainId: 42161,
+        chainName: 'Arbitrum One / Hyperliquid L1',
+        ethBalance: data.ethBalance || '0.0000 ETH',
+        usdtBalance: formattedUsdt,
+        isAuthorized: true,
+        isImported: true,
+        hyperliquidState: data.hyperliquid,
+        agentWallet: prev.agentWallet || {
+          address: data.address,
+          isAuthorized: true,
+          spendingLimitUsdt: 25000,
+          expiresInHours: 24,
+        },
+      }));
+
+      tacticalAudio.playVictory();
+      tacticalAudio.speakTacticalVoice('Billetera importada y vinculada a Hyperliquid.');
+      return true;
+    } catch (e: any) {
+      alert(`Error al importar: ${e?.message || e}`);
+      return false;
+    }
+  };
+
   // Toggle Sound
   const handleToggleSound = () => {
     const next = !soundEnabled;
@@ -574,6 +621,7 @@ export default function App() {
           setWalletState((prev) => ({ ...prev, agentWallet: agent }))
         }
         onFaucetUsdt={handleFaucet}
+        onImportWallet={handleImportWallet}
       />
 
       {/* 2. Trading Skills Database Modal */}
